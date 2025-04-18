@@ -1,10 +1,10 @@
 {
-    "extension_name": {
-        "message": "WebTeX",
-        "description": "The display name for the extension."
-    },
-    "extension_description": {
-        "message": "This is WebTeX. You should tell us what your extension does here.",
-        "description": "Description of what the extension does."
-    }
+  "extension_name": {
+    "message": "WebTeX",
+    "description": "Display name shown in Safari’s Extensions list."
+  },
+  "extension_description": {
+    "message": "Automatically renders LaTeX math on any webpage using KaTeX.",
+    "description": "Short summary of what the extension does."
+  }
 }

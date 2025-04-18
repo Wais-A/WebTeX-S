@@ -1,13 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+                      "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSExtension</key>
-	<dict>
-		<key>NSExtensionPointIdentifier</key>
-		<string>com.apple.Safari.web-extension</string>
-		<key>NSExtensionPrincipalClass</key>
-		<string>$(PRODUCT_MODULE_NAME).SafariWebExtensionHandler</string>
-	</dict>
+  <key>NSExtension</key>
+  <dict>
+    <key>NSExtensionPointIdentifier</key>
+    <string>com.apple.Safari.web-extension</string>
+    <key>NSExtensionPrincipalClass</key>
+    <string>$(PRODUCT_MODULE_NAME).SafariWebExtensionHandler</string>
+    <key>SFSafariContentScript</key>
+    <array>
+      <dict>
+        <key>Script</key>
+        <string>katex/katex.min.js</string>
+        <key>InjectionTime</key>
+        <string>document-end</string>
+        <key>ForMainFrameOnly</key>
+        <true/>
+      </dict>
+      <dict>
+        <key>Script</key>
+        <string>katex/contrib/auto-render.min.js</string>
+        <key>InjectionTime</key>
+        <string>document-end</string>
+        <key>ForMainFrameOnly</key>
+        <true/>
+      </dict>
+      <dict>
+        <key>Script</key>
+        <string>content.js</string>
+        <key>InjectionTime</key>
+        <string>document-end</string>
+        <key>ForMainFrameOnly</key>
+        <true/>
+      </dict>
+    </array>
+    <key>SFSafariStyleSheet</key>
+    <array>
+      <dict>
+        <key>Style Sheet</key>
+        <string>katex/katex.min.css</string>
+      </dict>
+    </array>
+    <key>SFSafariWebsiteAccess</key>
+    <dict>
+      <key>Level</key>
+      <string>All</string>
+    </dict>
+  </dict>
 </dict>
 </plist>

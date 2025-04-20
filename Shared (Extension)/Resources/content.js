@@ -1,8 +1,6 @@
 /* WebTeX — single‑toggle version (2025‑04) */
 
 (() => {
-  console.log('[WebTeX] injected on', location.hostname);
-
   const storage = browser.storage?.local ?? { get:async()=>({}), set:async()=>{} };
 
   /* run‑or‑skip decision */

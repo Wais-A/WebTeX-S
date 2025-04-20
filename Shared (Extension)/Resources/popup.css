@@ -71,3 +71,7 @@ input:checked + .slider::after { left: 20px; }
 @media (prefers-color-scheme: dark) {
 
 }
+
+.katex {
+  user-select: text !important;
+}

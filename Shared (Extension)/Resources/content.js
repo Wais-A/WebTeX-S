@@ -1,21 +1,28 @@
-/* WebTeX — single‑toggle version (2025‑04, selection‑safe) */
+/* WebTeX — single‑toggle version (2025‑04, selection‑safe + UI‑quiet) */
 
 (() => {
+  /* ------------------------------------------------------------------ */
+  /*  Storage shim (works in Safari & Firefox)                           */
+  /* ------------------------------------------------------------------ */
   const storage = browser.storage?.local ?? { get: async () => ({}), set: async () => {} };
 
-  /* run‑or‑skip decision ---------------------------------------------------- */
+  /* ------------------------------------------------------------------ */
+  /*  Run‑or‑skip decision                                              */
+  /* ------------------------------------------------------------------ */
   async function shouldRun() {
     const { globalEnabled = true } = await storage.get('globalEnabled');
     if (!globalEnabled) { console.log('[WebTeX] disabled'); return false; }
 
     if (document.querySelector('script[src*="katex"],script[src*="mathjax"]')) {
-      console.log('[WebTeX] native renderer detected – skip');
+      console.log('[WebTeX] native renderer detected – skip');
       return false;
     }
     return true;
   }
 
-  /* helpers ----------------------------------------------------------------- */
+  /* ------------------------------------------------------------------ */
+  /*  Helpers                                                           */
+  /* ------------------------------------------------------------------ */
   const DELIMS = [
     { left: '$$',  right: '$$',  display: true },
     { left: '\\[', right: '\\]', display: true },
@@ -23,17 +30,18 @@
     { left: '\\(', right: '\\)', display: false }
   ];
 
-  function decodeEntitiesWalk(n) {
-    if (n.nodeType === 3) {
-      n.data = n.data
+  /** Decode &lt;, &gt;, &amp; in *text* nodes so KaTeX sees raw delimiters */
+  function decodeEntitiesWalk(node) {
+    if (node.nodeType === 3) {
+      node.data = node.data
         .replace(/&gt;/g, '>')
         .replace(/&lt;/g, '<')
         .replace(/&amp;/g, '&');
     } else if (
-      n.nodeType === 1 &&
-      !['SCRIPT', 'STYLE', 'PRE', 'CODE', 'NOSCRIPT', 'TEXTAREA'].includes(n.nodeName)
+      node.nodeType === 1 &&
+      !['SCRIPT', 'STYLE', 'PRE', 'CODE', 'NOSCRIPT', 'TEXTAREA'].includes(node.nodeName)
     ) {
-      n.childNodes.forEach(decodeEntitiesWalk);
+      node.childNodes.forEach(decodeEntitiesWalk);
     }
   }
 
@@ -47,30 +55,55 @@
     });
   }
 
-  /* selection‑safe render wrapper ------------------------------------------- */
-  let mo;            // forward‑declared so safeRender can pause/restart it
+  /* ------------------------------------------------------------------ */
+  /*  Selection‑safe render wrapper                                     */
+  /* ------------------------------------------------------------------ */
+  let mo; // MutationObserver reference
 
   function safeRender(root = document.body) {
-    mo?.disconnect();                 // 1. stop observer feedback
-    renderAll(root);                  // 2. mutate DOM once
-    mo?.observe(document, {           // 3. resume (no characterData!)
+    mo?.disconnect();          // 1. pause observer
+    renderAll(root);           // 2. mutate DOM once
+    mo?.observe(document, {    // 3. resume
       subtree: true,
-      childList: true
+      childList: true,
+      characterData: true
     });
   }
 
-  /* main -------------------------------------------------------------------- */
+  /* ------------------------------------------------------------------ */
+  /*  Ripple filter helpers (ignore pure UI noise)                      */
+  /* ------------------------------------------------------------------ */
+  function isRippleNode(n) {
+    return (
+      n.nodeType === 1 &&
+      n.classList && (
+        n.classList.contains('mat-ripple') ||            // Angular Material
+        n.classList.contains('mdc-button__ripple') ||    // MDC
+        n.classList.contains('mat-focus-indicator')      // Focus ring
+      )
+    );
+  }
+
+  function mutationsOnlyRipple(muts) {
+    return muts.every(m =>
+      [...m.addedNodes, ...m.removedNodes].every(isRippleNode)
+    );
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Main                                                              */
+  /* ------------------------------------------------------------------ */
   (async function init() {
     if (!(await shouldRun())) return;
 
-    /* 1st render (after DOMContentLoaded if needed) */
+    /* First render --------------------------------------------------- */
     if (document.readyState === 'loading') {
       window.addEventListener('DOMContentLoaded', () => safeRender());
     } else {
       safeRender();
     }
 
-    /* make KaTeX output selectable everywhere */
+    /* Make KaTeX output selectable everywhere ------------------------ */
     const style = document.createElement('style');
     style.textContent = `
       .katex {
@@ -82,14 +115,19 @@
     `;
     document.head.append(style);
 
-    /* observer – throttled & selection‑friendly */
-    mo = new MutationObserver(() => {
-      clearTimeout(mo.t);
-      mo.t = setTimeout(() => requestAnimationFrame(() => safeRender()), 150);
-    });
-    mo.observe(document, { subtree: true, childList: true });
+    /* Observer (debounced, ripple‑aware) ----------------------------- */
+    mo = new MutationObserver(muts => {
+      if (mutationsOnlyRipple(muts)) return;  // ignore pure UI ripples
 
-    /* react to toggle flips from the popup/options page */
+      clearTimeout(mo.t);
+      mo.t = setTimeout(
+        () => requestAnimationFrame(() => safeRender()),
+        100   // debounce window
+      );
+    });
+    mo.observe(document, { subtree: true, childList: true, characterData: true });
+
+    /* React to toggle flips from popup / options --------------------- */
     browser.runtime.onMessage.addListener(msg => {
       if (msg === 'prefs-changed') shouldRun().then(ok => ok && safeRender());
     });

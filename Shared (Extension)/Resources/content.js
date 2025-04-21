@@ -1,28 +1,17 @@
-/* WebTeX — single‑toggle version (2025‑04, selection‑safe + UI‑quiet) */
+/* WebTeX — single‑toggle version (2025‑04, selection‑safe + UI‑quiet + typing‑safe) */
 
 (() => {
-  /* ------------------------------------------------------------------ */
-  /*  Storage shim (works in Safari & Firefox)                           */
-  /* ------------------------------------------------------------------ */
   const storage = browser.storage?.local ?? { get: async () => ({}), set: async () => {} };
 
-  /* ------------------------------------------------------------------ */
-  /*  Run‑or‑skip decision                                              */
-  /* ------------------------------------------------------------------ */
+  /* Run/skip decision ----------------------------------------------------- */
   async function shouldRun() {
     const { globalEnabled = true } = await storage.get('globalEnabled');
-    if (!globalEnabled) { console.log('[WebTeX] disabled'); return false; }
-
-    if (document.querySelector('script[src*="katex"],script[src*="mathjax"]')) {
-      console.log('[WebTeX] native renderer detected – skip');
-      return false;
-    }
+    if (!globalEnabled) return false;
+    if (document.querySelector('script[src*="katex"],script[src*="mathjax"]')) return false;
     return true;
   }
 
-  /* ------------------------------------------------------------------ */
-  /*  Helpers                                                           */
-  /* ------------------------------------------------------------------ */
+  /* Helpers ---------------------------------------------------------------- */
   const DELIMS = [
     { left: '$$',  right: '$$',  display: true },
     { left: '\\[', right: '\\]', display: true },
@@ -30,17 +19,19 @@
     { left: '\\(', right: '\\)', display: false }
   ];
 
-  /** Decode &lt;, &gt;, &amp; in *text* nodes so KaTeX sees raw delimiters */
   function decodeEntitiesWalk(node) {
-    if (node.nodeType === 3) {
+    /* ① Don’t touch anything inside an editor --------------------------- */
+    if (node.nodeType === 1 && (node.isContentEditable ||
+        node.matches?.('input, textarea, [contenteditable]'))) {
+      return;
+    }
+
+    if (node.nodeType === 3) {            // text node
       node.data = node.data
         .replace(/&gt;/g, '>')
         .replace(/&lt;/g, '<')
         .replace(/&amp;/g, '&');
-    } else if (
-      node.nodeType === 1 &&
-      !['SCRIPT', 'STYLE', 'PRE', 'CODE', 'NOSCRIPT', 'TEXTAREA'].includes(node.nodeName)
-    ) {
+    } else if (node.nodeType === 1) {     // element
       node.childNodes.forEach(decodeEntitiesWalk);
     }
   }
@@ -49,85 +40,69 @@
     decodeEntitiesWalk(root);
     renderMathInElement(root, {
       delimiters: DELIMS,
-      ignoredTags: ['script', 'style', 'textarea', 'pre', 'code', 'noscript'],
+      ignoredTags: ['script','style','textarea','pre','code','noscript','input'],
       throwOnError: false,
       strict: 'ignore'
     });
   }
 
-  /* ------------------------------------------------------------------ */
-  /*  Selection‑safe render wrapper                                     */
-  /* ------------------------------------------------------------------ */
-  let mo; // MutationObserver reference
-
+  /* Safe render wrapper ---------------------------------------------------- */
+  let mo;
   function safeRender(root = document.body) {
-    mo?.disconnect();          // 1. pause observer
-    renderAll(root);           // 2. mutate DOM once
-    mo?.observe(document, {    // 3. resume
-      subtree: true,
-      childList: true,
-      characterData: true
-    });
+    mo?.disconnect();
+    renderAll(root);
+    mo?.observe(document, { subtree: true, childList: true });  // no characterData
   }
 
-  /* ------------------------------------------------------------------ */
-  /*  Ripple filter helpers (ignore pure UI noise)                      */
-  /* ------------------------------------------------------------------ */
+  /* Ripple‑filter helpers -------------------------------------------------- */
   function isRippleNode(n) {
-    return (
-      n.nodeType === 1 &&
-      n.classList && (
-        n.classList.contains('mat-ripple') ||            // Angular Material
-        n.classList.contains('mdc-button__ripple') ||    // MDC
-        n.classList.contains('mat-focus-indicator')      // Focus ring
-      )
+    return n.nodeType === 1 && n.classList && (
+      n.classList.contains('mat-ripple') ||
+      n.classList.contains('mdc-button__ripple') ||
+      n.classList.contains('mat-focus-indicator')
     );
   }
-
   function mutationsOnlyRipple(muts) {
     return muts.every(m =>
       [...m.addedNodes, ...m.removedNodes].every(isRippleNode)
     );
   }
+  /* ✨ NEW helper: are all mutations inside the element we’re typing in? */
+  function typingInsideActiveElement(muts) {
+    const active = document.activeElement;
+    if (!active || !(active.isContentEditable || /^(INPUT|TEXTAREA)$/.test(active.tagName)))
+      return false;
+    return muts.every(m => active.contains(m.target));
+  }
 
-  /* ------------------------------------------------------------------ */
-  /*  Main                                                              */
-  /* ------------------------------------------------------------------ */
+  /* Main ------------------------------------------------------------------ */
   (async function init() {
     if (!(await shouldRun())) return;
 
-    /* First render --------------------------------------------------- */
     if (document.readyState === 'loading') {
       window.addEventListener('DOMContentLoaded', () => safeRender());
     } else {
       safeRender();
     }
 
-    /* Make KaTeX output selectable everywhere ------------------------ */
+    /* KaTeX selectable */
     const style = document.createElement('style');
-    style.textContent = `
-      .katex {
-        user-select: text !important;
-        -webkit-user-select: text !important;
-        -moz-user-select: text !important;
-        -ms-user-select: text !important;
-      }
-    `;
+    style.textContent = '.katex{user-select:text!important;}';
     document.head.append(style);
 
-    /* Observer (debounced, ripple‑aware) ----------------------------- */
+    /* Observer: ripple‑aware + typing‑aware */
     mo = new MutationObserver(muts => {
-      if (mutationsOnlyRipple(muts)) return;  // ignore pure UI ripples
+      if (mutationsOnlyRipple(muts)) return;          // UI hover noise
+      if (typingInsideActiveElement(muts)) return;    // user is typing
 
       clearTimeout(mo.t);
       mo.t = setTimeout(
         () => requestAnimationFrame(() => safeRender()),
-        100   // debounce window
+        100
       );
     });
-    mo.observe(document, { subtree: true, childList: true, characterData: true });
+    mo.observe(document, { subtree: true, childList: true });
 
-    /* React to toggle flips from popup / options --------------------- */
     browser.runtime.onMessage.addListener(msg => {
       if (msg === 'prefs-changed') shouldRun().then(ok => ok && safeRender());
     });

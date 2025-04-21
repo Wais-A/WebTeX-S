@@ -15,23 +15,23 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "7EC43D6E2DB0A34A008DE1C8"
+               BlueprintIdentifier = "7EC43D5C2DB0A34A008DE1C8"
                BuildableName = "WebTeX.app"
-               BlueprintName = "WebTeX (macOS)"
+               BlueprintName = "WebTeX (iOS)"
                ReferencedContainer = "container:WebTeX.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
-      buildConfiguration = "Release"
+      buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
       shouldAutocreateTestPlan = "YES">
    </TestAction>
    <LaunchAction
-      buildConfiguration = "Release"
+      buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
@@ -44,9 +44,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "7EC43D6E2DB0A34A008DE1C8"
+            BlueprintIdentifier = "7EC43D5C2DB0A34A008DE1C8"
             BuildableName = "WebTeX.app"
-            BlueprintName = "WebTeX (macOS)"
+            BlueprintName = "WebTeX (iOS)"
             ReferencedContainer = "container:WebTeX.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -61,36 +61,18 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "7EC43D6E2DB0A34A008DE1C8"
+            BlueprintIdentifier = "7EC43D5C2DB0A34A008DE1C8"
             BuildableName = "WebTeX.app"
-            BlueprintName = "WebTeX (macOS)"
+            BlueprintName = "WebTeX (iOS)"
             ReferencedContainer = "container:WebTeX.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
    <AnalyzeAction
-      buildConfiguration = "Release">
+      buildConfiguration = "Debug">
    </AnalyzeAction>
    <ArchiveAction
       buildConfiguration = "Release"
       revealArchiveInOrganizer = "YES">
-      <PostActions>
-         <ExecutionAction
-            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
-            <ActionContent
-               title = "Run Script"
-               scriptText = "# Type a script or drag a script file from your workspace to insert its path.&#10;xattr -cr &quot;${ARCHIVE_PRODUCTS_PATH}/${FULL_PRODUCT_NAME}&quot;&#10;">
-               <EnvironmentBuildable>
-                  <BuildableReference
-                     BuildableIdentifier = "primary"
-                     BlueprintIdentifier = "7EC43D6E2DB0A34A008DE1C8"
-                     BuildableName = "WebTeX.app"
-                     BlueprintName = "WebTeX (macOS)"
-                     ReferencedContainer = "container:WebTeX.xcodeproj">
-                  </BuildableReference>
-               </EnvironmentBuildable>
-            </ActionContent>
-         </ExecutionAction>
-      </PostActions>
    </ArchiveAction>
 </Scheme>

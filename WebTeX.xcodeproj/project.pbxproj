@@ -54,6 +54,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		7E166F2A2DB5ED7800C5C49D /* WebTeX (iOS).entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "WebTeX (iOS).entitlements"; sourceTree = "<group>"; };
 		7EC43D5D2DB0A34A008DE1C8 /* WebTeX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WebTeX.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7EC43D6F2DB0A34A008DE1C8 /* WebTeX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WebTeX.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7EC43D7B2DB0A34A008DE1C8 /* WebTeX Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "WebTeX Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -232,6 +233,7 @@
 		7EC43D402DB0A349008DE1C8 = {
 			isa = PBXGroup;
 			children = (
+				7E166F2A2DB5ED7800C5C49D /* WebTeX (iOS).entitlements */,
 				7EC43D452DB0A349008DE1C8 /* Shared (App) */,
 				7E15EEF12DB1F8B7001D236B /* Shared (Extension) */,
 				7EC43D5F2DB0A34A008DE1C8 /* iOS (App) */,
@@ -539,6 +541,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = "WebTeX (iOS).entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
@@ -580,6 +583,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = "WebTeX (iOS).entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;

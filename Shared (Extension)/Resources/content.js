@@ -75,6 +75,12 @@
     return muts.every(m => active.contains(m.target));
   }
 
+  /* ✨ NEW helper: is the user currently selecting text? */
+  function userIsSelecting() {
+    const sel = window.getSelection?.();
+    return !!sel && sel.type === 'Range';
+  }
+
   /* Main ------------------------------------------------------------------ */
   (async function init() {
     if (!(await shouldRun())) return;
@@ -90,10 +96,11 @@
     style.textContent = '.katex{user-select:text!important;}';
     document.head.append(style);
 
-    /* Observer: ripple‑aware + typing‑aware */
+    /* Observer: ripple‑aware + typing‑aware + selection‑aware */
     mo = new MutationObserver(muts => {
       if (mutationsOnlyRipple(muts)) return;          // UI hover noise
       if (typingInsideActiveElement(muts)) return;    // user is typing
+      if (userIsSelecting()) return;                 // user is selecting text
 
       clearTimeout(mo.t);
       mo.t = setTimeout(

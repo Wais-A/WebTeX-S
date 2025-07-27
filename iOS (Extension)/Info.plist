@@ -49,6 +49,8 @@
       <string>All</string>
     </dict>
   </dict>
+  <key>NSHumanReadableDescription</key>
+  <string>Renders LaTeX math equations on any webpage.</string>
   <key>SFSafariCorrespondingMacOSExtensionBundleIdentifier</key>
   <string>me.wais.WebTeX.Extension</string>
 </dict>

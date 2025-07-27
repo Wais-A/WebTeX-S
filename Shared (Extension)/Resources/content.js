@@ -20,6 +20,8 @@
   ];
 
   function decodeEntitiesWalk(node) {
+    if (node.dataset?.wtDecoded) return; // already decoded
+
     /* ① Don’t touch anything inside an editor --------------------------- */
     if (node.nodeType === 1 && (node.isContentEditable ||
         node.matches?.('input, textarea, [contenteditable]'))) {
@@ -32,7 +34,8 @@
         .replace(/&lt;/g, '<')
         .replace(/&amp;/g, '&');
     } else if (node.nodeType === 1) {     // element
-      node.childNodes.forEach(decodeEntitiesWalk);
+            node.childNodes.forEach(decodeEntitiesWalk);
+      node.dataset.wtDecoded = '1';
     }
   }
 
@@ -48,6 +51,7 @@
 
   /* Safe render wrapper ---------------------------------------------------- */
   let mo;
+  const schedule = cb => (window.requestIdleCallback ? requestIdleCallback(cb,{timeout:200}) : setTimeout(cb,100));
   function safeRender(root = document.body) {
     mo?.disconnect();
     renderAll(root);
@@ -56,11 +60,11 @@
 
   /* Ripple‑filter helpers -------------------------------------------------- */
   function isRippleNode(n) {
-    return n.nodeType === 1 && n.classList && (
-      n.classList.contains('mat-ripple') ||
-      n.classList.contains('mdc-button__ripple') ||
-      n.classList.contains('mat-focus-indicator')
-    );
+    if (n.nodeType !== 1 || !n.classList) return false;
+    const rippleClasses = [
+      'mat-ripple', 'mdc-button__ripple', 'mat-focus-indicator',
+      'ripple', 'MuiTouchRipple-root', 'v-ripple__container'];
+    return rippleClasses.some(c => n.classList.contains(c));
   }
   function mutationsOnlyRipple(muts) {
     return muts.every(m =>
@@ -78,7 +82,7 @@
   /* ✨ NEW helper: is the user currently selecting text? */
   function userIsSelecting() {
     const sel = window.getSelection?.();
-    return !!sel && sel.type === 'Range';
+    return !!sel && sel.rangeCount > 0 && !sel.isCollapsed;
   }
 
   /* Main ------------------------------------------------------------------ */
@@ -103,12 +107,10 @@
       if (userIsSelecting()) return;                 // user is selecting text
 
       clearTimeout(mo.t);
-      mo.t = setTimeout(
-        () => requestAnimationFrame(() => safeRender()),
-        100
-      );
+      mo.t = schedule(() => requestAnimationFrame(() => safeRender()));
     });
     mo.observe(document, { subtree: true, childList: true });
+    window.addEventListener('pagehide', () => mo.disconnect(), { once: true });
 
     browser.runtime.onMessage.addListener(msg => {
       if (msg === 'prefs-changed') shouldRun().then(ok => ok && safeRender());

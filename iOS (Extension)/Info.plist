@@ -49,5 +49,7 @@
       <string>All</string>
     </dict>
   </dict>
+  <key>SFSafariCorrespondingMacOSExtensionBundleIdentifier</key>
+  <string>me.wais.WebTeX.Extension</string>
 </dict>
 </plist>

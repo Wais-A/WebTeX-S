@@ -44,6 +44,11 @@
     return !!r && r.bottom > 0 && r.top < (window.innerHeight||0);
   }
 
+  function containsPotentialMath(node){
+    const t = node.textContent;
+    return /\$\$|\\\[|\\\(|\$[^\d\s]/.test(t);
+  }
+
   function renderAll(root = document.body) {
     decodeEntitiesWalk(root);
     renderMathInElement(root, {
@@ -63,6 +68,7 @@
     if (root.closest?.('[contenteditable], input, textarea')) return;
     // if root is element and off-screen, skip
     if (root !== document.body && !isInViewport(root)) return;
+    if (root !== document.body && !containsPotentialMath(root)) return;
     renderAll(root);
     mo?.observe(document, { subtree: true, childList: true });  // no characterData
   }

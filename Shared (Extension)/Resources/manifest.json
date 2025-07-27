@@ -4,7 +4,7 @@
 
   "name": "WebTeX",
   "description": "Automatically renders LaTeX math on webpages using KaTeX.",
-  "version": "1.0.0",
+  "version": "1.1.0",
 
   "icons": {
     "48":  "images/icon-48.png",

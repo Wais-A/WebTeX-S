@@ -28,7 +28,10 @@ class ViewController: PlatformViewController, WKNavigationDelegate, WKScriptMess
         self.webView.navigationDelegate = self
 
 #if os(iOS)
-        self.webView.scrollView.isScrollEnabled = false
+        // Disable scroll for normal extension-size window, but allow when compact height (Stage Manager/multitask)
+        if traitCollection.verticalSizeClass == .regular {
+            self.webView.scrollView.isScrollEnabled = false
+        }
 #endif
 
         self.webView.configuration.userContentController.add(self, name: "controller")

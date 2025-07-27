@@ -39,6 +39,11 @@
     }
   }
 
+  function isInViewport(el) {
+    const r = el.getBoundingClientRect?.();
+    return !!r && r.bottom > 0 && r.top < (window.innerHeight||0);
+  }
+
   function renderAll(root = document.body) {
     decodeEntitiesWalk(root);
     renderMathInElement(root, {
@@ -54,6 +59,10 @@
   const schedule = cb => (window.requestIdleCallback ? requestIdleCallback(cb,{timeout:200}) : setTimeout(cb,100));
   function safeRender(root = document.body) {
     mo?.disconnect();
+    // do not render inside editors
+    if (root.closest?.('[contenteditable], input, textarea')) return;
+    // if root is element and off-screen, skip
+    if (root !== document.body && !isInViewport(root)) return;
     renderAll(root);
     mo?.observe(document, { subtree: true, childList: true });  // no characterData
   }
@@ -102,6 +111,14 @@
 
     /* Observer: ripple‑aware + typing‑aware + selection‑aware */
     mo = new MutationObserver(muts => {
+      const subtrees = [];
+      muts.forEach(m => {
+        m.addedNodes.forEach(n => n.nodeType===1 && subtrees.push(n));
+      });
+      if (subtrees.length) {
+        schedule(() => subtrees.forEach(safeRender));
+        return;
+      }
       if (mutationsOnlyRipple(muts)) return;          // UI hover noise
       if (typingInsideActiveElement(muts)) return;    // user is typing
       if (userIsSelecting()) return;                 // user is selecting text

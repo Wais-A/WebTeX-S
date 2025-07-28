@@ -39,6 +39,10 @@
     "\\vector": "\\mathbf",
     // Nuclear notation macros
     "\\isotope": "{}^{#2}_{#1}\\textrm{#3}",
+    "\\nucl": "{}_{#1}^{#2}\\textrm{#3}",
+    "\\nucleus": "{}_{#1}^{#2}\\textrm{#3}",
+    // Special nuclear decay formula macro
+    "\\nucleardecay": "{}_{#1}^{#2}\\textrm{#3} \\to {}_{#4}^{#5}\\textrm{#6} + {}_{#7}^{#8}\\textrm{#9}",
     // Physics formula macros
     "\\coulomb": "\\mathbf{F} = k \\frac{Q_1 Q_2}{r^2}"
   };
@@ -103,7 +107,7 @@
         const formula = g1 || g2 || g3 || '';
         
         // Process the formula - handle \text{} with formulas
-        let processed = formula.replace(/\\text\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g, (match, content) => {
+        let processed = formula.replace(/\\text\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)}\}/g, (match, content) => {
           // If content has math symbols, remove the \text wrapper
           if (/[_\^\\+=\/\*0-9Q\{\}]/.test(content)) {
             return content;
@@ -112,9 +116,22 @@
         });
         
         // Handle \textbf{} properly - convert to \mathbf{}
-        processed = processed.replace(/\\textbf\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g, (match, content) => {
+        processed = processed.replace(/\\textbf\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)}\}/g, (match, content) => {
           return "\\mathbf{" + content + "}";
         });
+        
+        // Special handling for nuclear notation with specific format ^{A}{Z}N
+        processed = processed.replace(/(\^\{[^{}]+\})\{([^{}]+)\}\\text\{([^{}]+)\}/g, (match, sup, sub, element) => {
+          return "_{"+sub+"}" + sup + "\\text{" + element + "}";
+        });
+        
+        // Handle nuclear decay equations with the specific pattern
+        if (processed.includes('\\rightarrow') && /\^\{[^{}]+\}\{[^{}]+\}\\text\{[^{}]+\}/.test(processed)) {
+          // Convert ^{A}{Z}\text{N} format to _{Z}^{A}\text{N} format
+          processed = processed.replace(/(\^\{[^{}]+\})\{([^{}]+)\}\\text\{([^{}]+)\}/g, (match, sup, sub, element) => {
+            return "_{"+sub+"}" + sup + "\\text{" + element + "}";
+          });
+        }
         
         // Reconstruct the delimiter
         if (g1) return '$' + processed + '$';
@@ -168,6 +185,10 @@
         ignoredTags: ['script','style','textarea','pre','code','noscript','input'],
         throwOnError: false,
         strict: 'ignore',
+        trust: true,
+        fleqn: false,
+        leqno: false,
+        output: 'html',  // Use HTML output for better handling of complex formulas
         macros: COMMON_MACROS
       });
     }

@@ -8,6 +8,11 @@ browser.runtime.onInstalled.addListener(async ({reason}) => {
 
 // Toolbar icon click toggles enable/disable for current site
 function baseHost(h){
+  // Special case for NotebookLM
+  if (h.includes('notebooklm.google.com')) {
+    return 'notebooklm.google.com';
+  }
+  
   const parts = h.split('.');
   return parts.length>2 ? parts.slice(-2).join('.') : h;
 }

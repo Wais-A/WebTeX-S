@@ -22,6 +22,7 @@
   "content_scripts": [{
     "matches": ["<all_urls>"],
     "all_frames": true,
+    "match_about_blank": true,
     "run_at": "document_end",
     "js": [
       "katex/katex.min.js",

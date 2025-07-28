@@ -1,5 +1,6 @@
 * {
     -webkit-user-select: none;
+    user-select: none;
     -webkit-user-drag: none;
     cursor: default;
 }
@@ -58,4 +59,35 @@ body.state-off :is(.state-on, .state-unknown) {
 
 button {
     font-size: 1em;
+}
+
+/* Company website link styling */
+.company-link {
+    margin-top: 1em;
+    padding: 0.5em 0;
+    color: var(--accent-color, #0066cc);
+    font-size: 0.9em;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    opacity: 0.85;
+}
+
+.company-link:hover {
+    opacity: 1;
+    transform: translateY(-1px);
+}
+
+.company-link svg {
+    width: 16px;
+    height: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --accent-color: #2997ff;
+    }
 }

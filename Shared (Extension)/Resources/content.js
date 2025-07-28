@@ -70,7 +70,7 @@
     if (root !== document.body && !isInViewport(root)) return;
     if (root !== document.body && !containsPotentialMath(root)) return;
     renderAll(root);
-    mo?.observe(document, { subtree: true, childList: true });  // no characterData
+    mo?.observe(document, { subtree: true, childList: true, characterData: true });  // no characterData
   }
 
   /* Ripple‑filter helpers -------------------------------------------------- */
@@ -117,9 +117,17 @@
 
     /* Observer: ripple‑aware + typing‑aware + selection‑aware */
     mo = new MutationObserver(muts => {
+      // if text changed inside existing node, re-render whole viewport after debounce
+      if (muts.some(m => m.type === 'characterData')) {
+        clearTimeout(mo.t);
+        mo.t = schedule(() => requestAnimationFrame(() => safeRender()));
+        return;
+      }
       const subtrees = [];
       muts.forEach(m => {
-        m.addedNodes.forEach(n => n.nodeType===1 && subtrees.push(n));
+        if (m.type === 'childList') {
+          m.addedNodes.forEach(n => n.nodeType===1 && subtrees.push(n));
+        }
       });
       if (subtrees.length) {
         schedule(() => subtrees.forEach(safeRender));
@@ -132,7 +140,7 @@
       clearTimeout(mo.t);
       mo.t = schedule(() => requestAnimationFrame(() => safeRender()));
     });
-    mo.observe(document, { subtree: true, childList: true });
+    mo.observe(document, { subtree: true, childList: true, characterData: true });
     window.addEventListener('pagehide', () => mo.disconnect(), { once: true });
 
     browser.runtime.onMessage.addListener(msg => {

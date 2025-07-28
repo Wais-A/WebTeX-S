@@ -27,15 +27,20 @@
   
   // Common LaTeX macros to ensure consistent rendering
   const COMMON_MACROS = {
-    "\\text": "\\textrm",
     "\\rightarrow": "\\to",
     "\\N": "\\mathbb{N}",
     "\\Z": "\\mathbb{Z}",
     "\\Q": "\\mathbb{Q}",
     "\\R": "\\mathbb{R}",
     "\\C": "\\mathbb{C}",
+    // Bold text and vector support
+    "\\vec": "\\mathbf",
+    "\\vect": "\\mathbf",
+    "\\vector": "\\mathbf",
     // Nuclear notation macros
-    "\\isotope": "{}^{#2}_{#1}\\textrm{#3}"
+    "\\isotope": "{}^{#2}_{#1}\\textrm{#3}",
+    // Physics formula macros
+    "\\coulomb": "\\mathbf{F} = k \\frac{Q_1 Q_2}{r^2}"
   };
 
   function decodeEntitiesWalk(node) {
@@ -68,8 +73,64 @@
     return /\$\$|\\\[|\\\(|\$[^\d\s]/.test(t);
   }
 
+  // Process LaTeX in DOM to handle text with formulas before KaTeX renders it
+  function processLatexInDOM() {
+    // Find all LaTeX delimiters in text nodes
+    const textWalker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_TEXT,
+      null,
+      false
+    );
+    
+    const nodesToProcess = [];
+    let currentNode;
+    
+    // First collect all text nodes containing math delimiters
+    while (currentNode = textWalker.nextNode()) {
+      const text = currentNode.nodeValue;
+      if (text && /\$(.*?)\$|\\\[(.*?)\\\]|\\\((.*?)\\\)/.test(text)) {
+        nodesToProcess.push(currentNode);
+      }
+    }
+    
+    // Then process each one
+    nodesToProcess.forEach(node => {
+      let text = node.nodeValue;
+      
+      // Replace \text{FORMULA} with just FORMULA in math contexts
+      text = text.replace(/\$(.*?)\$|\\\[(.*?)\\\]|\\\((.*?)\\\)/g, (match, g1, g2, g3) => {
+        const formula = g1 || g2 || g3 || '';
+        
+        // Process the formula - handle \text{} with formulas
+        let processed = formula.replace(/\\text\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g, (match, content) => {
+          // If content has math symbols, remove the \text wrapper
+          if (/[_\^\\+=\/\*0-9Q\{\}]/.test(content)) {
+            return content;
+          }
+          return match;
+        });
+        
+        // Handle \textbf{} properly - convert to \mathbf{}
+        processed = processed.replace(/\\textbf\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}/g, (match, content) => {
+          return "\\mathbf{" + content + "}";
+        });
+        
+        // Reconstruct the delimiter
+        if (g1) return '$' + processed + '$';
+        if (g2) return '\\[' + processed + '\\]';
+        return '\\(' + processed + '\\)';
+      });
+      
+      node.nodeValue = text;
+    });
+  }
+  
   function renderAll(root = document.body) {
     decodeEntitiesWalk(root);
+    
+    // Process LaTeX with text formulas directly in the DOM before rendering
+    processLatexInDOM();
     
     // Check if we're on NotebookLM
     const isNotebookLM = window.location.hostname.includes('notebooklm');
@@ -189,10 +250,94 @@
     });
   }
   
+  /* Toggle handling ----------------------------------------------------- */
+  let extensionEnabled = true;
+  
+  // Unrender all LaTeX elements on the page
+  function unrenderMath() {
+    // Find all rendered KaTeX elements
+    const mathElements = document.querySelectorAll('.katex-mathml');
+    
+    mathElements.forEach(mathEl => {
+      const parent = mathEl.parentElement;
+      if (!parent) return;
+      
+      // Store original LaTeX in a data attribute for later re-rendering
+      const originalTex = mathEl.querySelector('annotation')?.textContent;
+      if (originalTex) {
+        // Find the outer wrapper that contains both mathml and html
+        const wrapper = parent.closest('.katex') || parent;
+        const originalContent = document.createElement('span');
+        originalContent.className = 'wt-original-tex';
+        originalContent.textContent = originalTex;
+        
+        // Store the original display mode
+        const isDisplayMode = wrapper.classList.contains('katex-display');
+        if (isDisplayMode) {
+          originalContent.dataset.displayMode = 'true';
+        }
+        
+        // Replace the rendered math with the original LaTeX
+        if (wrapper.parentElement) {
+          wrapper.parentElement.replaceChild(originalContent, wrapper);
+        }
+      }
+    });
+    
+    // Also convert any unprocessed delimiters to wt-original-tex
+    processLatexInDOM(true);
+  }
+  
+  // Listen for messages from popup or background script
+  browser.runtime.onMessage.addListener(async (message) => {
+    if (message.action === 'toggleExtension') {
+      extensionEnabled = message.enabled;
+      
+      if (extensionEnabled) {
+        // Re-render all math when toggled on
+        const originalTexElements = document.querySelectorAll('.wt-original-tex');
+        originalTexElements.forEach(el => {
+          try {
+            const tex = el.textContent;
+            const displayMode = el.dataset.displayMode === 'true';
+            const newEl = document.createElement('span');
+            if (displayMode) {
+              newEl.textContent = '$$' + tex + '$$';
+            } else {
+              newEl.textContent = '$' + tex + '$';
+            }
+            if (el.parentElement) {
+              el.parentElement.replaceChild(newEl, el);
+            }
+          } catch (e) {
+            console.error('Error re-rendering math:', e);
+          }
+        });
+        
+        // Restart normal rendering
+        safeRender();
+      } else {
+        // Unrender all math when toggled off
+        unrenderMath();
+      }
+      
+      return Promise.resolve({status: 'success'});
+    }
+    return Promise.resolve({status: 'unknown_message'});
+  });
+  
   /* Main ------------------------------------------------------------------ */
   (async function init() {
-    if (!(await shouldRun())) return;
+    // Check if the extension is enabled (defaults to true)
+    try {
+      const data = await browser.storage.local.get('extensionEnabled');
+      extensionEnabled = data.extensionEnabled !== false; // Default to true if not set
+    } catch (e) {
+      console.error('Error retrieving extension state:', e);
+    }
     
+    if (!(await shouldRun()) || !extensionEnabled) return;
+
     // Check if we're on NotebookLM
     const isNotebookLM = window.location.hostname.includes('notebooklm');
     
@@ -238,91 +383,147 @@
       console.error('WebTeX style insertion error:', e);
     }
 
-    /* Observer: ripple‑aware + typing‑aware + selection‑aware */
-    try {
-      // Check if we're on NotebookLM
-      const isNotebookLM = window.location.hostname.includes('notebooklm');
-      
-      mo = new MutationObserver(muts => {
-        try {
-          // if text changed, render parent elements quickly
-          const charNodes = muts.filter(m => m.type === 'characterData').map(m => m.target.parentNode).filter(Boolean);
-          if (charNodes.length) {
-            const uniqueParents = Array.from(new Set(charNodes));
-            schedule(() => uniqueParents.forEach(safeRender));
-            // fall through to allow additional logic (e.g., full render debounce)
-          }
-          
-          const subtrees = [];
-          // attribute changes (e.g., display:none → block)
-          muts.forEach(m => {
-            if (m.type === 'attributes') {
-              subtrees.push(m.target);
-            }
-          });
-          muts.forEach(m => {
-            if (m.type === 'childList') {
-              m.addedNodes.forEach(n => n.nodeType===1 && subtrees.push(n));
-            }
-          });
-          if (subtrees.length) {
-            schedule(() => subtrees.forEach(safeRender));
-            return;
-          }
-          
-          // For NotebookLM, we want to be more aggressive with rendering
-          if (isNotebookLM) {
-            // For NotebookLM, be less restrictive about when to render
-            // This helps ensure math gets rendered despite strict CSP
-            const shouldSkip = mutationsOnlyRipple(muts) || 
-                              (typingInsideActiveElement(muts) && !isNotebookLM) || 
-                              (userIsSelecting() && !isNotebookLM);
-                              
-            if (!shouldSkip) {
-              clearTimeout(mo.t);
-              mo.t = setTimeout(() => safeRender(), 100);
-            }
-          } else {
-            // Standard behavior for other sites
-            if (mutationsOnlyRipple(muts)) return;          // UI hover noise
-            if (typingInsideActiveElement(muts)) return;    // user is typing
-            if (userIsSelecting()) return;                 // user is selecting text
-
-            clearTimeout(mo.t);
-            mo.t = schedule(() => requestAnimationFrame(() => safeRender()));
-          }
-        } catch (e) {
-          console.error('WebTeX mutation handling error:', e);
-        }
-      });
-      
-      // Start observing with error handling
-      mo.observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['style','hidden','class'] });
-    } catch (e) {
-      console.error('WebTeX observer setup error:', e);
-    }
-    // Re-attach observer when tab becomes visible again (handles SPA view swaps)
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) {
-        try { 
-          // First try to re-observe
-          mo.observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['style','hidden','class'] }); 
-          
-          // Check if we're on NotebookLM and force a render
-          if (window.location.hostname.includes('notebooklm')) {
-            // Staggered rendering to catch dynamic content
-            setTimeout(safeRender, 100);
-            setTimeout(safeRender, 1000);
-            setTimeout(safeRender, 3000);
-          }
-        } catch (e) {
-          console.error('WebTeX visibility change error:', e);
-        }
-      }
-    });
-
-    browser.runtime.onMessage.addListener(msg => {
-      if (msg === 'prefs-changed') shouldRun().then(ok => ok && safeRender());
-    });
+    // Set up enhanced continuous rendering
+    setupContinuousRendering();
   })();
 })();
+
+// Enhanced continuous LaTeX rendering is already implemented in the first setupContinuousRendering function
+
+// Setup function for continuous LaTeX rendering across the page
+function setupContinuousRendering() {
+  // Set up persistent timer references
+  window.webTexRenderTimers = window.webTexRenderTimers || {};
+  
+  // Create a more advanced observer with enhanced dynamic content detection
+  const enhancedObserver = new MutationObserver(mutations => {
+    try {
+      // Check if we're on NotebookLM - need special handling
+      const isNotebookLM = window.location.hostname.includes('notebooklm');
+      
+      // Skip observation based on common conditions
+      // NotebookLM gets special treatment - we're more aggressive with rendering
+      const shouldSkip = !isNotebookLM && (
+        mutationsOnlyRipple(mutations) || 
+        typingInsideActiveElement(mutations) || 
+        userIsSelecting()
+      );
+      
+      if (shouldSkip) return;
+      
+      // Track whether we have dynamic content that needs special handling
+      let hasDynamicContent = false;
+      let targetNodes = [];
+      
+      // Look for dynamic content like note links opening
+      for (const mutation of mutations) {
+        // Check added nodes
+        if (mutation.addedNodes.length > 0) {
+          for (const node of mutation.addedNodes) {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              // Store for targeted rendering
+              targetNodes.push(node);
+              
+              // Check if this looks like dynamic content (notes, articles, etc.)
+              if (node.tagName === 'DIV' || node.tagName === 'ARTICLE' || 
+                  node.tagName === 'SECTION' || node.tagName === 'MAIN') {
+                hasDynamicContent = true;
+              }
+              
+              // Check if it contains math
+              if (node.textContent && containsLatex(node.textContent)) {
+                hasDynamicContent = true;
+              }
+            }
+          }
+        }
+        
+        // Also check text changes
+        if (mutation.type === 'characterData') {
+          const text = mutation.target.nodeValue;
+          if (text && containsLatex(text)) {
+            hasDynamicContent = true;
+            if (mutation.target.parentNode) {
+              targetNodes.push(mutation.target.parentNode);
+            }
+          }
+        }
+      }
+      
+      // Clear any existing timers
+      Object.values(window.webTexRenderTimers).forEach(timer => clearTimeout(timer));
+      
+      // Handle normal and dynamic content differently
+      if (hasDynamicContent) {
+        // For dynamic content, use a staggered rendering approach
+        // This catches content that loads progressively
+        window.webTexRenderTimers.immediate = setTimeout(() => {
+          // First try to render specific changed nodes
+          targetNodes.forEach(node => {
+            try { 
+              // Only render element nodes
+              if (node.nodeType === Node.ELEMENT_NODE) {
+                processLatexInDOM(false, node);
+                renderMathInElement(node);
+              }
+            } catch (e) {
+              // Silently fail individual node renders
+            }
+          });
+          
+          // Then do a full render
+          safeRender();
+        }, 50);
+        
+        // Follow-up renders to catch anything that might load with a delay
+        window.webTexRenderTimers.short = setTimeout(safeRender, 500);
+        window.webTexRenderTimers.medium = setTimeout(safeRender, 1500);
+        window.webTexRenderTimers.long = setTimeout(safeRender, 3000);
+      } else {
+        // For normal content changes, a single delayed render is enough
+        window.webTexRenderTimers.normal = setTimeout(() => {
+          safeRender();
+        }, 100);
+      }
+    } catch (e) {
+      console.error('WebTeX mutation handling error:', e);
+    }
+  });
+  
+  // Start observing the whole document with all relevant options
+  try {
+    enhancedObserver.observe(document, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true, 
+      attributeFilter: ['style', 'hidden', 'class']
+    });
+  } catch (e) {
+    console.error('WebTeX observer setup error:', e);
+  }
+  
+  // Also watch for visibility changes (tab switching, etc.)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      // When tab becomes visible again, do a fresh render
+      try {
+        // Staggered rendering to catch any new content
+        setTimeout(safeRender, 100);
+        setTimeout(safeRender, 1000);
+      } catch (e) {
+        console.error('WebTeX visibility change error:', e);
+      }
+    }
+  });
+  
+  // Initial render
+  safeRender();
+  
+  // Listen for message from popup
+  browser.runtime.onMessage.addListener(msg => {
+    if (msg === 'prefs-changed') {
+      shouldRun().then(ok => ok && safeRender());
+    }
+  });
+}

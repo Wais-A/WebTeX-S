@@ -21,4 +21,22 @@ function openPreferences() {
     webkit.messageHandlers.controller.postMessage("open-preferences");
 }
 
+function openExternalURL(url) {
+    // Use system handler to open URL externally
+    webkit.messageHandlers.controller.postMessage({"action": "open-url", "url": url});
+    return false; // Prevent default link behavior
+}
+
+// Add event listeners
 document.querySelector("button.open-preferences").addEventListener("click", openPreferences);
+
+// Set up external links
+document.addEventListener("DOMContentLoaded", function() {
+    const externalLinks = document.querySelectorAll(".external-link");
+    externalLinks.forEach(link => {
+        link.addEventListener("click", function(e) {
+            e.preventDefault();
+            openExternalURL(this.getAttribute("href"));
+        });
+    });
+});

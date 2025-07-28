@@ -1,5 +1,6 @@
 * {
     -webkit-user-select: none;
+    user-select: none;
     -webkit-user-drag: none;
     cursor: default;
 }
@@ -23,6 +24,8 @@ body {
     gap: var(--spacing);
     margin: 0 calc(var(--spacing) * 2);
     height: 100%;
+    padding: env(safe-area-inset-top, 20px) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+    box-sizing: border-box;
 
     font: -apple-system-short-body;
     text-align: center;
@@ -58,4 +61,33 @@ body.state-off :is(.state-on, .state-unknown) {
 
 button {
     font-size: 1em;
+}
+
+/* Company info styling */
+.company-info {
+    margin-top: 1.5em;
+    padding: 0.5em 0;
+    font-size: 0.9em;
+    text-align: center;
+    opacity: 0.85;
+}
+
+.company-info p {
+    margin: 0.2em 0;
+}
+
+.company-info p:first-child {
+    font-weight: 500;
+    color: var(--accent-color, #0066cc);
+}
+
+.company-info p:last-child {
+    font-size: 0.85em;
+    opacity: 0.8;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --accent-color: #2997ff;
+    }
 }

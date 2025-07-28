@@ -1,21 +1,43 @@
 const toggle   = document.getElementById('toggle');
 const storage  = browser.storage.local;
+const statusEl = document.createElement('div');
 
 async function load () {
-  const { globalEnabled = true } = await storage.get('globalEnabled');
-  toggle.checked = globalEnabled;
+  const { extensionEnabled = true } = await storage.get('extensionEnabled');
+  toggle.checked = extensionEnabled;
+  
+  statusEl.className = 'status';
+  statusEl.style.color = toggle.checked ? '#4CAF50' : '#777';
+  statusEl.textContent = toggle.checked ? 'Active' : 'Disabled';
+  document.body.appendChild(statusEl);
 }
 
 toggle.addEventListener('change', async () => {
-  /* ① persist the new state … */
-  await storage.set({ globalEnabled: toggle.checked });
-
-  /* ② tell every content-script that prefs changed (optional--kept) */
-  browser.runtime.sendMessage('prefs-changed').catch(()=>{});
-
-  /* ③ reload the active tab so the change is visible immediately */
-  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  if (tab?.id) browser.tabs.reload(tab.id);      // ← the actual refresh
+  statusEl.style.color = toggle.checked ? '#4CAF50' : '#777';
+  statusEl.textContent = toggle.checked ? 'Active' : 'Disabled';
+  
+  await storage.set({ extensionEnabled: toggle.checked });
+  
+  const tabs = await browser.tabs.query({});
+  
+  statusEl.textContent = 'Applying changes...';
+  
+  const promises = tabs.map(tab => {
+    try {
+      return browser.tabs.sendMessage(tab.id, {
+        action: 'toggleExtension',
+        enabled: toggle.checked
+      }).catch(() => {/* Ignore errors for tabs where content script isn't running */});
+    } catch (e) {
+      return Promise.resolve(); // Ignore errors
+    }
+  });
+  
+  await Promise.all(promises);
+  
+  setTimeout(() => {
+    statusEl.textContent = toggle.checked ? 'Active' : 'Disabled';
+  }, 750);
 });
 
 load();

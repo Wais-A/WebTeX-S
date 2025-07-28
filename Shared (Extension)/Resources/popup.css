@@ -69,9 +69,23 @@ input:checked + .slider::after { left: 20px; }
 .label { flex: 1; font-size: 13px; }
 
 @media (prefers-color-scheme: dark) {
-
+  .status {
+    color: #64D2FF !important;
+  }
+  
+  input:checked + .slider {
+    background: #0A84FF;
+  }
 }
 
 .katex {
   user-select: text !important;
+}
+
+.status {
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  padding: 4px 0;
 }

@@ -24,6 +24,19 @@
     { left: '$',   right: '$',   display: false },
     { left: '\\(', right: '\\)', display: false }
   ];
+  
+  // Common LaTeX macros to ensure consistent rendering
+  const COMMON_MACROS = {
+    "\\text": "\\textrm",
+    "\\rightarrow": "\\to",
+    "\\N": "\\mathbb{N}",
+    "\\Z": "\\mathbb{Z}",
+    "\\Q": "\\mathbb{Q}",
+    "\\R": "\\mathbb{R}",
+    "\\C": "\\mathbb{C}",
+    // Nuclear notation macros
+    "\\isotope": "{}^{#2}_{#1}\\textrm{#3}"
+  };
 
   function decodeEntitiesWalk(node) {
     if (node.dataset?.wtDecoded) return; // already decoded
@@ -74,8 +87,14 @@
               ignoredTags: ['script','style','textarea','pre','code','noscript','input'],
               throwOnError: false,
               trust: true,  // Add trust option to handle some CSP issues
-              strict: 'ignore'
+              strict: 'ignore',
+              macros: {
+                "\\text": "\\textrm"  // Provide explicit text macro support
+              }
             });
+            
+            // Fix selection/copying for rendered math
+            setTimeout(() => fixMathSelection(), 100);
           }, 0);
         }
       } catch (e) {
@@ -87,7 +106,8 @@
         delimiters: DELIMS,
         ignoredTags: ['script','style','textarea','pre','code','noscript','input'],
         throwOnError: false,
-        strict: 'ignore'
+        strict: 'ignore',
+        macros: COMMON_MACROS
       });
     }
   }
@@ -133,6 +153,42 @@
     return !!sel && sel.rangeCount > 0 && !sel.isCollapsed;
   }
 
+  /* Selection fix ----------------------------------------------------------- */
+  function fixMathSelection() {
+    // Find all KaTeX-rendered elements
+    const mathElements = document.querySelectorAll('.katex');
+    
+    mathElements.forEach(mathEl => {
+      if (mathEl.dataset.selectionFixed) return;
+      mathEl.dataset.selectionFixed = 'true';
+      
+      // Store the original LaTeX in a data attribute for copy support
+      const mathmlElement = mathEl.querySelector('.katex-mathml annotation');
+      if (mathmlElement) {
+        const originalTex = mathmlElement.textContent;
+        mathEl.dataset.originalTex = originalTex;
+      }
+      
+      // Make math elements more selection-friendly
+      mathEl.style.userSelect = 'text';
+      mathEl.querySelectorAll('*').forEach(el => {
+        el.style.userSelect = 'text';
+      });
+      
+      // Handle copy event to preserve the LaTeX format
+      mathEl.addEventListener('copy', function(e) {
+        // Only handle if this element or its child is the primary target
+        if (!e.currentTarget.contains(document.getSelection().anchorNode)) return;
+        
+        const texContent = mathEl.dataset.originalTex;
+        if (texContent) {
+          e.clipboardData.setData('text/plain', texContent);
+          e.preventDefault();
+        }
+      });
+    });
+  }
+  
   /* Main ------------------------------------------------------------------ */
   (async function init() {
     if (!(await shouldRun())) return;

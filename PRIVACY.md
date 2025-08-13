@@ -1,8 +1,4 @@
-# Privacy Policy for WebTeX (Safari Extension)
-
-**Last Updated:** August 13, 2025
-
-WebTeX respects your privacy. This policy explains how the extension handles your data.
+# Privacy Policy for WebTeX
 
 ## 1) What WebTeX Does
 WebTeX detects math expressions on webpages and renders them using **KaTeX**.  
